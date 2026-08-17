@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanaei Manager</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #080b12;
+            color: white;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .box {
+            width: min(500px, 90%);
+            padding: 35px;
+            background: #111722;
+            border: 1px solid #273146;
+            border-radius: 25px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,.35);
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: #8f9aae;
+            line-height: 1.8;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 15px 25px;
+            border: 0;
+            border-radius: 13px;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(135deg,#586cff,#754cff);
+        }
+
+        button:disabled {
+            opacity: .6;
+        }
+
+        #status {
+            margin-top: 20px;
+            color: #7ee2a7;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+
+    <h1>🚀 Sanaei Manager</h1>
+
+    <p>
+        برای ساخت پنل سنایی روی دکمه زیر کلیک کنید.
+    </p>
+
+    <button id="createBtn" onclick="createPanel()">
+        ساخت پنل سنایی
+    </button>
+
+    <div id="status"></div>
+
+</div>
+
+<script>
+
+async function createPanel() {
+
+    const button =
+        document.getElementById("createBtn");
+
+    const status =
+        document.getElementById("status");
+
+    button.disabled = true;
+
+    button.textContent =
+        "در حال راه‌اندازی پنل سنایی...";
+
+    status.textContent =
+        "لطفاً صبر کنید...";
+
+    try {
+
+        const response =
+            await fetch("/api/create", {
+                method: "POST"
+            });
+
+        const data =
+            await response.json();
+
+        if (!data.success) {
+            throw new Error(
+                data.error || "خطا در ساخت پنل"
+            );
+        }
+
+        status.textContent =
+            "✅ پنل آماده شد؛ در حال انتقال...";
+
+        setTimeout(() => {
+
+            window.location.href =
+                "/managepanel/panel";
+
+        }, 1000);
+
+    } catch (error) {
+
+        status.textContent =
+            "❌ " + error.message;
+
+        button.disabled = false;
+
+        button.textContent =
+            "تلاش مجدد";
+    }
+}
+
+</script>
+
+</body>
+</html>
