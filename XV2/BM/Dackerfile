@@ -1,0 +1,100 @@
+FROM alpine:3.19
+
+RUN apk add --no-cache \
+    curl \
+    bash \
+    ca-certificates \
+    socat \
+    tzdata \
+    sqlite \
+    nginx \
+    gettext \
+    && ln -sf /usr/share/zoneinfo/Asia/Tehran /etc/localtime
+
+# دانلود و نصب 3x-ui
+RUN curl -L https://github.com/mhsanaei/3x-ui/releases/download/v3.5.0/x-ui-linux-amd64.tar.gz -o /tmp/x-ui.tar.gz \
+    && tar -xzf /tmp/x-ui.tar.gz -C /usr/local/ \
+    && rm /tmp/x-ui.tar.gz \
+    && chmod +x /usr/local/x-ui/x-ui
+
+RUN mkdir -p /etc/x-ui /var/log/x-ui
+
+# ---- nginx.conf (پورت ثابت 8080) ----
+RUN cat > /etc/nginx/nginx.conf <<'EOF'
+worker_processes 1;
+events { worker_connections 1024; }
+
+http {
+    server {
+        listen 8080;
+
+        location /managepanel/ {
+            proxy_pass http://127.0.0.1:2053/managepanel/;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /sub/ {
+            proxy_pass http://127.0.0.1:2096/sub/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:8081;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /in1 { proxy_pass http://127.0.0.1:8081; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in2 { proxy_pass http://127.0.0.1:8082; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in3 { proxy_pass http://127.0.0.1:8083; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in4 { proxy_pass http://127.0.0.1:8084; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in5 { proxy_pass http://127.0.0.1:8085; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in6 { proxy_pass http://127.0.0.1:8086; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in7 { proxy_pass http://127.0.0.1:8087; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in8 { proxy_pass http://127.0.0.1:8088; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+        location /in9 { proxy_pass http://127.0.0.1:8089; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host $host; }
+    }
+}
+EOF
+
+# ---- start.sh ----
+RUN cat > /start.sh <<'EOF'
+#!/bin/bash
+set -e
+
+echo "🚀 Starting X-UI + nginx reverse proxy on port 8080..."
+
+cd /usr/local/x-ui
+
+echo "🔧 Applying panel settings via x-ui CLI..."
+./x-ui setting -port 2053 -webBasePath /managepanel/ || true
+
+echo "▶️  Starting x-ui in background..."
+./x-ui &
+
+sleep 2
+
+echo "▶️  Starting nginx in foreground on port 8080..."
+nginx -t
+exec nginx -g "daemon off;"
+EOF
+RUN chmod +x /start.sh
+
+EXPOSE 8080
+
+CMD ["/start.sh"]
